@@ -1,26 +1,52 @@
 :root {
   /* Light theme (default) */
-  --bg: #ffffff;
-  --surface: #fafafa;
+  --bg: #dee6f1;
+  --surface: #fbf8f2;
   --surface-2: #ffffff;
+  --node-bg: #fefcf8;
+  --edge-stroke: #7c8a9a;
+  --dot-color: #a4b0c0;
   --text: #1a1a1a;
   --text-muted: #6b7280;
-  --border: #e5e7eb;
+  --border: #d9dde4;
   --accent: #3b82f6;
   --accent-soft: rgba(59, 130, 246, 0.12);
-  --halo: 0 0 0 4px rgba(59, 130, 246, 0.28);
+  --accent-strong: rgba(59, 130, 246, 0.5);
+  --select: #f59e0b;
+  --select-soft: rgba(245, 158, 11, 0.18);
+  --select-strong: rgba(245, 158, 11, 0.65);
+  --ink: #0891b2;
+  --ink-soft: rgba(8, 145, 178, 0.08);
+  --danger: #e11d48;
+  --danger-soft: rgba(225, 29, 72, 0.1);
+  --halo:
+    0 0 0 3px rgba(59, 130, 246, 0.55),
+    0 0 0 8px rgba(59, 130, 246, 0.18);
 }
 
 :root[data-theme='dark'] {
-  --bg: #0f1115;
-  --surface: #16181d;
-  --surface-2: #1a1d23;
+  --bg: #0a1124;
+  --surface: #1a1620;
+  --surface-2: #22232a;
+  --node-bg: #1d2435;
+  --edge-stroke: #647488;
+  --dot-color: #3b455b;
   --text: #e8e8ea;
   --text-muted: #9aa0a6;
-  --border: #2a2d33;
+  --border: #2c2f3a;
   --accent: #6aa3ff;
   --accent-soft: rgba(106, 163, 255, 0.18);
-  --halo: 0 0 0 4px rgba(106, 163, 255, 0.32);
+  --accent-strong: rgba(106, 163, 255, 0.55);
+  --select: #fbbf24;
+  --select-soft: rgba(251, 191, 36, 0.22);
+  --select-strong: rgba(251, 191, 36, 0.7);
+  --ink: #22d3ee;
+  --ink-soft: rgba(34, 211, 238, 0.10);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --halo:
+    0 0 0 3px rgba(106, 163, 255, 0.6),
+    0 0 0 8px rgba(106, 163, 255, 0.22);
 }
 
 html,
@@ -42,7 +68,7 @@ body {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 38%);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 38%);
 }
 
 .canvas-pane {
@@ -92,25 +118,95 @@ body {
 }
 
 .content-pane {
-  padding: 24px 28px;
+  padding: 20px 24px;
   overflow-y: auto;
   border-bottom: 1px solid var(--border);
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.content-pane .node-id {
-  margin: 0 0 16px;
-  font-size: 17px;
+.content-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.node-label-display {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 30px;
   font-weight: 600;
   font-family: ui-monospace, 'SF Mono', Consolas, monospace;
   color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: default;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
-.content-pane p {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.6;
+.node-label-display:hover {
+  border-color: var(--border);
+}
+
+.node-label-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
   color: var(--text);
+  font-size: 30px;
+  font-weight: 600;
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  padding: 8px 12px;
+  border-radius: 4px;
+  line-height: 1.25;
+}
+
+.node-label-input:focus {
+  outline: none;
+}
+
+.node-body-display {
+  flex: 1;
+  min-height: 260px;
+  padding: 22px 24px;
+  font-size: 19px;
+  line-height: 1.7;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: default;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-y: auto;
+}
+
+.node-body-display:hover {
+  border-color: var(--text-muted);
+}
+
+.node-body-input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 19px;
+  line-height: 1.7;
+  padding: 22px 24px;
+  resize: none;
+  min-height: 260px;
+}
+
+.node-body-input:focus {
+  outline: none;
 }
 
 .placeholder {
@@ -118,8 +214,13 @@ body {
   font-style: italic;
 }
 
+.placeholder-inline {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .edges-pane {
-  padding: 14px 28px 18px;
+  padding: 14px 24px 18px;
   overflow-y: auto;
   background: var(--surface);
   min-height: 0;
@@ -145,54 +246,154 @@ body {
 
 .edge-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 4px 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 13px;
   cursor: pointer;
   transition:
     border-color 0.12s,
-    background 0.12s;
+    background 0.12s,
+    box-shadow 0.12s;
 }
 
 .edge-item:hover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--text-muted);
 }
 
-.edge-item .edge-label {
-  color: var(--text);
+.edge-item.selected {
+  border-color: var(--select);
+  background: var(--select-soft);
+  box-shadow: 0 0 0 1px var(--select-strong);
+}
+
+.edge-label-display {
   flex: 1;
   min-width: 0;
+  padding: 5px 6px;
+  font-size: 13px;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.edge-item .edge-type {
+.edge-label-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.edge-label-input:focus {
+  outline: none;
+}
+
+.edge-type-select {
+  background: var(--accent-soft);
   color: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 4px;
   font-family: ui-monospace, 'SF Mono', Consolas, monospace;
   font-size: 11px;
-  padding: 2px 6px;
-  background: var(--accent-soft);
-  border-radius: 4px;
+  padding: 3px 6px;
+  cursor: pointer;
   flex-shrink: 0;
 }
 
-.react-flow__node.node-focused {
-  box-shadow: var(--halo);
-  border-radius: 4px;
+.edge-type-select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
-.react-flow__edge.edge-suggested .react-flow__edge-path {
+.icon-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.icon-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.icon-button.danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.react-flow {
+  --xy-node-boxshadow-selected: var(--halo);
+  --xy-node-background-color: var(--node-bg);
+  --xy-node-background-color-default: var(--node-bg);
+  --xy-edge-stroke: var(--edge-stroke);
+  --xy-edge-stroke-default: var(--edge-stroke);
+  --xy-background-pattern-dots-color: var(--dot-color);
+  --xy-background-pattern-dots-color-default: var(--dot-color);
+}
+
+.react-flow__node.react-flow__node-default {
+  border-color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+
+.react-flow .react-flow__edge.edge-suggested .react-flow__edge-path {
   stroke: var(--accent);
   stroke-width: 2;
 }
 
-.react-flow__edge.edge-suggested .react-flow__edge-text {
+.react-flow .react-flow__edge.edge-suggested .react-flow__edge-text {
   fill: var(--accent);
+}
+
+.react-flow .react-flow__edge.edge-selected .react-flow__edge-path {
+  stroke: var(--select);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 5px var(--select-strong));
+}
+
+.react-flow .react-flow__edge.edge-selected .react-flow__edge-text {
+  fill: var(--select);
+  font-weight: 700;
+}
+
+.edge-label-floating {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.edge-label-floating:hover {
+  border-color: var(--accent);
+}
+
+.edge-label-floating.selected {
+  border-color: var(--select);
+  background: var(--select-soft);
+  color: var(--select);
+  font-weight: 600;
 }

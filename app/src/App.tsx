@@ -1,28 +1,197 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react'
 import {
   ReactFlow,
   MiniMap,
   Controls,
   Background,
+  BaseEdge,
+  EdgeLabelRenderer,
+  MarkerType,
+  getSmoothStepPath,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   addEdge,
   type Connection,
   type Node,
   type Edge,
+  type EdgeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import * as dagre from '@dagrejs/dagre'
 
-type CardNodeData = { label: string }
-type CardEdgeData = { edgeType: string }
+const EDGE_TYPES = [
+  'supports',
+  'opposes',
+  'qualifies',
+  'instantiates',
+  'responds-to',
+  'synthesizes',
+  'depends-on',
+  'defers-to',
+] as const
+type EdgeType = (typeof EDGE_TYPES)[number]
+
+type CardNodeData = { label: string; body: string }
+type CardEdgeData = {
+  edgeType: EdgeType
+  labelOffsetX?: number
+  labelOffsetY?: number
+}
 type CardNode = Node<CardNodeData>
 type CardEdge = Edge<CardEdgeData>
+
+const FILE_VERSION = '0.1'
+const ARROW_COLOR = '#9ca3af'
+const LAYOUT_NODE_W = 172
+const LAYOUT_NODE_H = 40
+
+function CardEdgeComponent(props: EdgeProps) {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    label,
+    data,
+    style,
+    markerEnd,
+    selected,
+  } = props
+  const { setEdges, getViewport } = useReactFlow()
+
+  const [path, defaultLabelX, defaultLabelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    borderRadius: 0,
+  })
+
+  const d = data as
+    | { labelOffsetX?: number; labelOffsetY?: number }
+    | undefined
+  const offsetX = d?.labelOffsetX ?? 0
+  const offsetY = d?.labelOffsetY ?? 0
+  const labelX = defaultLabelX + offsetX
+  const labelY = defaultLabelY + offsetY
+
+  const dragRef = useRef<{
+    startClientX: number
+    startClientY: number
+    startOffsetX: number
+    startOffsetY: number
+  } | null>(null)
+
+  const onLabelMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startOffsetX: offsetX,
+      startOffsetY: offsetY,
+    }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const { zoom } = getViewport()
+      const dx = (ev.clientX - dragRef.current.startClientX) / zoom
+      const dy = (ev.clientY - dragRef.current.startClientY) / zoom
+      setEdges((eds) =>
+        eds.map((edge) =>
+          edge.id === id
+            ? {
+                ...edge,
+                data: {
+                  ...edge.data,
+                  labelOffsetX: dragRef.current!.startOffsetX + dx,
+                  labelOffsetY: dragRef.current!.startOffsetY + dy,
+                },
+              }
+            : edge,
+        ),
+      )
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
+  const hasLabel =
+    typeof label === 'string' ? label.length > 0 : label != null
+
+  return (
+    <>
+      <BaseEdge path={path} style={style} markerEnd={markerEnd} />
+      {hasLabel && (
+        <EdgeLabelRenderer>
+          <div
+            className={`edge-label-floating${selected ? ' selected' : ''}`}
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              pointerEvents: 'all',
+              cursor: 'move',
+            }}
+            onMouseDown={onLabelMouseDown}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  )
+}
+
+const customEdgeTypes = { 'card-edge': CardEdgeComponent }
+
+function autoLayout(
+  nodes: CardNode[],
+  edges: CardEdge[],
+  direction: 'LR' | 'TB' = 'LR',
+): CardNode[] {
+  if (nodes.length === 0) return nodes
+  const g = new dagre.graphlib.Graph()
+  g.setGraph({ rankdir: direction, nodesep: 60, ranksep: 140 })
+  g.setDefaultEdgeLabel(() => ({}))
+  nodes.forEach((n) =>
+    g.setNode(n.id, { width: LAYOUT_NODE_W, height: LAYOUT_NODE_H }),
+  )
+  edges.forEach((e) => g.setEdge(e.source, e.target))
+  dagre.layout(g)
+  return nodes.map((n) => {
+    const pos = g.node(n.id)
+    return {
+      ...n,
+      position: {
+        x: pos.x - LAYOUT_NODE_W / 2,
+        y: pos.y - LAYOUT_NODE_H / 2,
+      },
+    }
+  })
+}
 
 const initialNodes: CardNode[] = [
   {
     id: 'central_claim',
     position: { x: 0, y: 0 },
-    data: { label: 'central_claim' },
+    data: { label: 'central_claim', body: '' },
   },
 ]
 const initialEdges: CardEdge[] = []
@@ -31,10 +200,20 @@ type Theme = 'light' | 'dark'
 
 function App() {
   const idRef = useRef(2)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fitViewRef = useRef<((opts?: { duration?: number }) => void) | null>(
+    null,
+  )
+
   const [nodes, setNodes, onNodesChange] = useNodesState<CardNode>(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<CardEdge>(initialEdges)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
     'central_claim',
+  )
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [editingEdgeId, setEditingEdgeId] = useState<string | null>(null)
+  const [editingField, setEditingField] = useState<'label' | 'body' | null>(
+    null,
   )
   const [theme, setTheme] = useState<Theme>(() =>
     typeof window !== 'undefined' &&
@@ -47,12 +226,16 @@ function App() {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
+  useEffect(() => {
+    setEditingField(null)
+  }, [selectedNodeId])
+
   const onConnect = useCallback(
     (params: Connection) => {
       const newEdge: CardEdge = {
         ...params,
         id: `e_${params.source}_${params.target}_${Date.now()}`,
-        label: 'supports',
+        label: '',
         data: { edgeType: 'supports' },
       }
       setEdges((eds) => addEdge(newEdge, eds))
@@ -70,10 +253,12 @@ function App() {
           x: Math.random() * 400 - 200,
           y: Math.random() * 300 - 150,
         },
-        data: { label: id },
+        data: { label: id, body: '' },
       },
     ])
     setSelectedNodeId(id)
+    setSelectedEdgeId(null)
+    setEditingEdgeId(null)
   }, [setNodes])
 
   const onNodesDelete = useCallback(
@@ -83,6 +268,208 @@ function App() {
       }
     },
     [selectedNodeId],
+  )
+
+  const updateNodeData = useCallback(
+    (id: string, partial: Partial<CardNodeData>) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, ...partial } } : n,
+        ),
+      )
+    },
+    [setNodes],
+  )
+
+  const deleteNode = useCallback(
+    (id: string) => {
+      setNodes((nds) => nds.filter((n) => n.id !== id))
+      setEdges((eds) =>
+        eds.filter((e) => e.source !== id && e.target !== id),
+      )
+      if (selectedNodeId === id) setSelectedNodeId(null)
+    },
+    [setNodes, setEdges, selectedNodeId],
+  )
+
+  const updateEdge = useCallback(
+    (id: string, partial: { label?: string; edgeType?: EdgeType }) => {
+      setEdges((eds) =>
+        eds.map((e) => {
+          if (e.id !== id) return e
+          return {
+            ...e,
+            label: partial.label !== undefined ? partial.label : e.label,
+            data: {
+              edgeType: partial.edgeType ?? e.data?.edgeType ?? 'supports',
+            },
+          }
+        }),
+      )
+    },
+    [setEdges],
+  )
+
+  const deleteEdge = useCallback(
+    (id: string) => {
+      const edge = edges.find((e) => e.id === id)
+      if (!edge) return
+      const labelPart =
+        typeof edge.label === 'string' && edge.label
+          ? `\n\n"${edge.label}"`
+          : ''
+      const ok = window.confirm(`Delete this edge?${labelPart}`)
+      if (!ok) return
+      setEdges((eds) => eds.filter((e) => e.id !== id))
+      if (selectedEdgeId === id) setSelectedEdgeId(null)
+      if (editingEdgeId === id) setEditingEdgeId(null)
+    },
+    [edges, setEdges, selectedEdgeId, editingEdgeId],
+  )
+
+  const applyAutoLayout = useCallback(() => {
+    const newNodes = autoLayout(nodes, edges, 'TB')
+    setNodes(newNodes)
+    window.requestAnimationFrame(() => {
+      fitViewRef.current?.({ duration: 400 })
+    })
+  }, [nodes, edges, setNodes])
+
+  const clearAll = useCallback(() => {
+    const ok = window.confirm(
+      'Clear all nodes and edges? This cannot be undone.',
+    )
+    if (!ok) return
+    setNodes([])
+    setEdges([])
+    setSelectedNodeId(null)
+    setSelectedEdgeId(null)
+    setEditingEdgeId(null)
+    idRef.current = 2
+  }, [setNodes, setEdges])
+
+  const saveToFile = useCallback(() => {
+    const data = {
+      version: FILE_VERSION,
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        position: n.position,
+        data: n.data,
+      })),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle ?? null,
+        targetHandle: e.targetHandle ?? null,
+        label: typeof e.label === 'string' ? e.label : '',
+        data: e.data,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `argument-canvas-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [nodes, edges])
+
+  const onFileSelected = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        const parsed = JSON.parse(text) as unknown
+        if (typeof parsed !== 'object' || parsed === null) {
+          throw new Error('file is not a valid object')
+        }
+        const rec = parsed as Record<string, unknown>
+        const rawNodes: unknown[] = Array.isArray(rec.nodes) ? rec.nodes : []
+        const rawEdges: unknown[] = Array.isArray(rec.edges) ? rec.edges : []
+
+        const loadedNodes: CardNode[] = rawNodes.flatMap((raw): CardNode[] => {
+          if (typeof raw !== 'object' || raw === null) return []
+          const r = raw as Record<string, unknown>
+          if (typeof r.id !== 'string') return []
+          const pos = r.position as Record<string, unknown> | undefined
+          const data = r.data as Record<string, unknown> | undefined
+          return [
+            {
+              id: r.id,
+              position: {
+                x: typeof pos?.x === 'number' ? pos.x : 0,
+                y: typeof pos?.y === 'number' ? pos.y : 0,
+              },
+              data: {
+                label: typeof data?.label === 'string' ? data.label : '',
+                body: typeof data?.body === 'string' ? data.body : '',
+              },
+            },
+          ]
+        })
+
+        const loadedEdges: CardEdge[] = rawEdges.flatMap((raw): CardEdge[] => {
+          if (typeof raw !== 'object' || raw === null) return []
+          const r = raw as Record<string, unknown>
+          if (
+            typeof r.id !== 'string' ||
+            typeof r.source !== 'string' ||
+            typeof r.target !== 'string'
+          )
+            return []
+          const data = r.data as Record<string, unknown> | undefined
+          const candidate = data?.edgeType
+          const edgeType: EdgeType =
+            typeof candidate === 'string' &&
+            (EDGE_TYPES as readonly string[]).includes(candidate)
+              ? (candidate as EdgeType)
+              : 'supports'
+          const labelOffsetX =
+            typeof data?.labelOffsetX === 'number' ? data.labelOffsetX : 0
+          const labelOffsetY =
+            typeof data?.labelOffsetY === 'number' ? data.labelOffsetY : 0
+          return [
+            {
+              id: r.id,
+              source: r.source,
+              target: r.target,
+              sourceHandle:
+                typeof r.sourceHandle === 'string' ? r.sourceHandle : null,
+              targetHandle:
+                typeof r.targetHandle === 'string' ? r.targetHandle : null,
+              label: typeof r.label === 'string' ? r.label : '',
+              data: { edgeType, labelOffsetX, labelOffsetY },
+            },
+          ]
+        })
+
+        setNodes(loadedNodes)
+        setEdges(loadedEdges)
+        setSelectedNodeId(null)
+        setSelectedEdgeId(null)
+        setEditingEdgeId(null)
+        idRef.current = loadedNodes.reduce((acc, n) => {
+          const m = /^node_(\d+)$/.exec(n.id)
+          return m ? Math.max(acc, parseInt(m[1], 10) + 1) : acc
+        }, 2)
+        window.requestAnimationFrame(() => {
+          fitViewRef.current?.({ duration: 300 })
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'unknown error'
+        window.alert(`Failed to load: ${msg}`)
+      }
+      e.target.value = ''
+    },
+    [setNodes, setEdges],
   )
 
   const selectedNode = useMemo(
@@ -100,18 +487,29 @@ function App() {
       nodes.map((n) => ({
         ...n,
         className: n.id === selectedNodeId ? 'node-focused' : '',
+        data: { ...n.data, label: n.data.label || n.id },
       })),
     [nodes, selectedNodeId],
   )
 
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        className: e.source === selectedNodeId ? 'edge-suggested' : '',
-        animated: e.source === selectedNodeId,
-      })),
-    [edges, selectedNodeId],
+      edges.map((e) => {
+        const isSuggested = e.source === selectedNodeId
+        const isSelected = e.id === selectedEdgeId
+        const cls = [
+          isSuggested ? 'edge-suggested' : '',
+          isSelected ? 'edge-selected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+        return {
+          ...e,
+          className: cls,
+          animated: isSuggested,
+        }
+      }),
+    [edges, selectedNodeId, selectedEdgeId],
   )
 
   return (
@@ -119,14 +517,25 @@ function App() {
       <div className="canvas-pane">
         <div className="toolbar">
           <button onClick={addNode}>Add node</button>
+          <button onClick={saveToFile}>Save</button>
+          <button onClick={() => fileInputRef.current?.click()}>Load</button>
+          <button onClick={clearAll}>Clear</button>
+          <button onClick={applyAutoLayout}>Auto-layout</button>
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           >
             {theme === 'light' ? 'Dark' : 'Light'} mode
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={onFileSelected}
+            style={{ display: 'none' }}
+          />
           <span className="hint">
-            click node to focus · select + Backspace to remove · drag handle
-            to connect
+            click node to focus · click edge to select · double-click edge
+            label to edit · drag handle to connect
           </span>
         </div>
         <ReactFlow
@@ -136,8 +545,32 @@ function App() {
           onEdgesChange={onEdgesChange}
           onNodesDelete={onNodesDelete}
           onConnect={onConnect}
-          onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-          onPaneClick={() => setSelectedNodeId(null)}
+          onNodeClick={(_, node) => {
+            setSelectedNodeId(node.id)
+            setSelectedEdgeId(null)
+            setEditingEdgeId(null)
+          }}
+          onEdgeClick={(_, edge) => {
+            setSelectedEdgeId(edge.id)
+          }}
+          onPaneClick={() => {
+            setSelectedNodeId(null)
+            setSelectedEdgeId(null)
+            setEditingEdgeId(null)
+          }}
+          onInit={(instance) => {
+            fitViewRef.current = (opts) => instance.fitView(opts)
+          }}
+          edgeTypes={customEdgeTypes}
+          defaultEdgeOptions={{
+            type: 'card-edge',
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 18,
+              height: 18,
+              color: ARROW_COLOR,
+            },
+          }}
           deleteKeyCode={['Backspace', 'Delete']}
           colorMode={theme}
           fitView
@@ -151,12 +584,76 @@ function App() {
         <section className="content-pane">
           {selectedNode ? (
             <>
-              <h2 className="node-id">{selectedNode.data.label}</h2>
-              <p className="placeholder">
-                Full content (the unfolding) will live here. The on-canvas
-                label is a minimal summary; this panel is where the depth
-                expands.
-              </p>
+              <div className="content-header">
+                {editingField === 'label' ? (
+                  <input
+                    autoFocus
+                    className="node-label-input"
+                    type="text"
+                    value={selectedNode.data.label}
+                    onChange={(e) =>
+                      updateNodeData(selectedNode.id, {
+                        label: e.target.value,
+                      })
+                    }
+                    onBlur={() => setEditingField(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        ;(e.target as HTMLInputElement).blur()
+                      } else if (e.key === 'Escape') {
+                        setEditingField(null)
+                      }
+                    }}
+                    placeholder={selectedNode.id}
+                  />
+                ) : (
+                  <h2
+                    className="node-label-display"
+                    title="Double-click to edit"
+                    onDoubleClick={() => setEditingField('label')}
+                  >
+                    {selectedNode.data.label || (
+                      <span className="placeholder-inline">
+                        {selectedNode.id}
+                      </span>
+                    )}
+                  </h2>
+                )}
+                <button
+                  className="icon-button danger"
+                  title="Delete node"
+                  onClick={() => deleteNode(selectedNode.id)}
+                >
+                  Delete
+                </button>
+              </div>
+              {editingField === 'body' ? (
+                <textarea
+                  autoFocus
+                  className="node-body-input"
+                  value={selectedNode.data.body}
+                  onChange={(e) =>
+                    updateNodeData(selectedNode.id, { body: e.target.value })
+                  }
+                  onBlur={() => setEditingField(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setEditingField(null)
+                  }}
+                  placeholder="(full content / the unfolding goes here)"
+                />
+              ) : (
+                <div
+                  className="node-body-display"
+                  title="Double-click to edit"
+                  onDoubleClick={() => setEditingField('body')}
+                >
+                  {selectedNode.data.body || (
+                    <span className="placeholder-inline">
+                      (double-click to add content)
+                    </span>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <p className="placeholder">Click a node to focus it.</p>
@@ -172,18 +669,90 @@ function App() {
             <ul className="edge-list">
               {outgoingEdges.map((edge) => {
                 const target = nodes.find((n) => n.id === edge.target)
+                const targetLabel = target?.data.label || edge.target
+                const edgeType = edge.data?.edgeType ?? 'supports'
                 const label =
-                  (typeof edge.label === 'string' && edge.label) ||
-                  `→ ${target?.data.label ?? edge.target}`
-                const type = edge.data?.edgeType ?? 'supports'
+                  typeof edge.label === 'string' ? edge.label : ''
+                const isSelected = edge.id === selectedEdgeId
+                const isEditing = edge.id === editingEdgeId
                 return (
                   <li
                     key={edge.id}
-                    className="edge-item"
-                    onClick={() => setSelectedNodeId(edge.target)}
+                    className={`edge-item${isSelected ? ' selected' : ''}${
+                      isEditing ? ' editing' : ''
+                    }`}
+                    onClick={() => setSelectedEdgeId(edge.id)}
+                    onDoubleClick={() => {
+                      setSelectedEdgeId(edge.id)
+                      setEditingEdgeId(edge.id)
+                    }}
                   >
-                    <span className="edge-label">{label}</span>
-                    <span className="edge-type">{type}</span>
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        className="edge-label-input"
+                        type="text"
+                        value={label}
+                        onChange={(e) =>
+                          updateEdge(edge.id, { label: e.target.value })
+                        }
+                        onBlur={() => setEditingEdgeId(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            ;(e.target as HTMLInputElement).blur()
+                          } else if (e.key === 'Escape') {
+                            setEditingEdgeId(null)
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder={`→ ${targetLabel}`}
+                      />
+                    ) : (
+                      <span className="edge-label-display">
+                        {label || (
+                          <span className="placeholder-inline">
+                            → {targetLabel}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <select
+                      className="edge-type-select"
+                      value={edgeType}
+                      onChange={(e) =>
+                        updateEdge(edge.id, {
+                          edgeType: e.target.value as EdgeType,
+                        })
+                      }
+                    >
+                      {EDGE_TYPES.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="icon-button"
+                      title={`Walk to ${targetLabel}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedNodeId(edge.target)
+                        setSelectedEdgeId(null)
+                        setEditingEdgeId(null)
+                      }}
+                    >
+                      →
+                    </button>
+                    <button
+                      className="icon-button danger"
+                      title="Delete edge"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteEdge(edge.id)
+                      }}
+                    >
+                      ×
+                    </button>
                   </li>
                 )
               })}
