@@ -50,8 +50,8 @@ type CardEdge = Edge<CardEdgeData>
 
 const FILE_VERSION = '0.1'
 const ARROW_COLOR = '#9ca3af'
-const LAYOUT_NODE_W = 172
-const LAYOUT_NODE_H = 40
+const LAYOUT_NODE_W = 210
+const LAYOUT_NODE_H = 56
 
 function CardEdgeComponent(props: EdgeProps) {
   const {
@@ -215,6 +215,10 @@ function App() {
   const [editingField, setEditingField] = useState<'label' | 'body' | null>(
     null,
   )
+  const [revealMode, setRevealMode] = useState(true)
+  const [walkedEdgeIds, setWalkedEdgeIds] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [theme, setTheme] = useState<Theme>(() =>
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -232,16 +236,48 @@ function App() {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      const id = `e_${params.source}_${params.target}_${Date.now()}`
       const newEdge: CardEdge = {
         ...params,
-        id: `e_${params.source}_${params.target}_${Date.now()}`,
+        id,
         label: '',
         data: { edgeType: 'supports' },
       }
       setEdges((eds) => addEdge(newEdge, eds))
+      setWalkedEdgeIds((prev) => {
+        const next = new Set(prev)
+        next.add(id)
+        return next
+      })
     },
     [setEdges],
   )
+
+  const walkEdge = useCallback(
+    (edgeId: string, targetId: string) => {
+      setWalkedEdgeIds((prev) => {
+        const next = new Set(prev)
+        next.add(edgeId)
+        return next
+      })
+      setSelectedNodeId(targetId)
+      setSelectedEdgeId(null)
+      setEditingEdgeId(null)
+      setNodes((nds) =>
+        nds.map((n) => ({ ...n, selected: n.id === targetId })),
+      )
+    },
+    [setNodes],
+  )
+
+  const showAllLinks = useCallback(() => {
+    setRevealMode(false)
+  }, [])
+
+  const resetWalk = useCallback(() => {
+    setWalkedEdgeIds(new Set())
+    setRevealMode(true)
+  }, [])
 
   const addNode = useCallback(() => {
     const id = `node_${idRef.current++}`
@@ -345,6 +381,8 @@ function App() {
     setSelectedNodeId(null)
     setSelectedEdgeId(null)
     setEditingEdgeId(null)
+    setWalkedEdgeIds(new Set())
+    setRevealMode(true)
     idRef.current = 2
   }, [setNodes, setEdges])
 
@@ -456,6 +494,8 @@ function App() {
         setSelectedNodeId(null)
         setSelectedEdgeId(null)
         setEditingEdgeId(null)
+        setWalkedEdgeIds(new Set())
+        setRevealMode(true)
         idRef.current = loadedNodes.reduce((acc, n) => {
           const m = /^node_(\d+)$/.exec(n.id)
           return m ? Math.max(acc, parseInt(m[1], 10) + 1) : acc
@@ -492,12 +532,21 @@ function App() {
     [nodes, selectedNodeId],
   )
 
+  const visibleEdges = useMemo(() => {
+    if (!revealMode) return edges
+    return edges.filter(
+      (e) => walkedEdgeIds.has(e.id) || e.source === selectedNodeId,
+    )
+  }, [edges, revealMode, walkedEdgeIds, selectedNodeId])
+
   const styledEdges = useMemo(
     () =>
-      edges.map((e) => {
+      visibleEdges.map((e) => {
         const isSuggested = e.source === selectedNodeId
         const isSelected = e.id === selectedEdgeId
+        const isWalked = walkedEdgeIds.has(e.id)
         const cls = [
+          isWalked ? 'edge-walked' : '',
           isSuggested ? 'edge-suggested' : '',
           isSelected ? 'edge-selected' : '',
         ]
@@ -509,7 +558,7 @@ function App() {
           animated: isSuggested,
         }
       }),
-    [edges, selectedNodeId, selectedEdgeId],
+    [visibleEdges, selectedNodeId, selectedEdgeId, walkedEdgeIds],
   )
 
   return (
@@ -521,6 +570,8 @@ function App() {
           <button onClick={() => fileInputRef.current?.click()}>Load</button>
           <button onClick={clearAll}>Clear</button>
           <button onClick={applyAutoLayout}>Auto-layout</button>
+          <button onClick={showAllLinks}>Show all</button>
+          <button onClick={resetWalk}>Reset walk</button>
           <button
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           >
@@ -736,9 +787,7 @@ function App() {
                       title={`Walk to ${targetLabel}`}
                       onClick={(e) => {
                         e.stopPropagation()
-                        setSelectedNodeId(edge.target)
-                        setSelectedEdgeId(null)
-                        setEditingEdgeId(null)
+                        walkEdge(edge.id, edge.target)
                       }}
                     >
                       →
