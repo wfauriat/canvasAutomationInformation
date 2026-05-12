@@ -58,6 +58,7 @@ type CardNodeData = {
   core_claim?: boolean
   core_theory?: boolean
   illustration?: boolean
+  isStructural?: boolean
   main_cluster?: ClusterId
   /* === end authoring features === */
 }
@@ -256,6 +257,7 @@ function App() {
   const [showCoreClaim, setShowCoreClaim] = useState(false)
   const [showCoreTheory, setShowCoreTheory] = useState(false)
   const [showIllustration, setShowIllustration] = useState(false)
+  const [showStructural, setShowStructural] = useState(false)
   const [showClusters, setShowClusters] = useState(false)
   /* === end authoring features === */
 
@@ -511,6 +513,7 @@ function App() {
             ...(data?.core_claim === true && { core_claim: true }),
             ...(data?.core_theory === true && { core_theory: true }),
             ...(data?.illustration === true && { illustration: true }),
+            ...(data?.isStructural === true && { isStructural: true }),
             ...(cluster && { main_cluster: cluster }),
           }
           /* === end authoring features === */
@@ -620,6 +623,8 @@ function App() {
             classes.push('flag-core-theory')
           if (showIllustration && n.data.illustration)
             classes.push('flag-illustration')
+          if (showStructural && n.data.isStructural)
+            classes.push('flag-structural')
           if (showClusters && n.data.main_cluster)
             classes.push(`cluster-${n.data.main_cluster}`)
         }
@@ -636,6 +641,7 @@ function App() {
       showCoreClaim,
       showCoreTheory,
       showIllustration,
+      showStructural,
       showClusters,
     ],
   )
@@ -766,6 +772,13 @@ function App() {
               title="Highlight illustration nodes (dotted border)"
             >
               illustration
+            </button>
+            <button
+              className={showStructural ? 'active' : ''}
+              onClick={() => setShowStructural((v) => !v)}
+              title="Highlight structural spine nodes (outline ring)"
+            >
+              structural
             </button>
             <button
               className={showClusters ? 'active' : ''}

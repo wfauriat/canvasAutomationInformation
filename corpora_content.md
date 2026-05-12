@@ -59,6 +59,7 @@ Moving close to the frame problem and source of uncertainty:
 - The frame problem applies to both the deductive reasoning mode and the inductive reasoning mode, and thus precludes perfect (exact) prediction structurally
 - Authors talk about the limits of "reasonning from a finite position" and about "bounded rationality" (as a consequence for decision-making disposition)
 - In uncertainty quantification, one generally functionnaly separates "aleatory uncertainty" : what we choose not specify any further and "leave to chance"; and "epistemic uncertainty" : what could be reduced by acquiring additional information (thus acknowledging the limits of out current knowledge)
+- When "deciding" what to specify our predictions build on: what we know will induce variations, both the sources we could possibly reduce but decide not (epistemic) and the sources it would not be practical to reduce (aleatoric), but also what we may not have though about (ontologic)
 - In uncertainty quantification, one rarely talks about "ontological uncertainty" : what is relevent, what to consider, what to include in models
 - Bertrand Russels's (or Hume's) turkey : prediction confidence grows progressively until Thanksgiving, but the frame is poorly selected
 

@@ -488,6 +488,11 @@ body {
   border-style: dotted;
 }
 
+.react-flow .react-flow__node.flag-structural {
+  outline: 3px solid var(--danger);
+  outline-offset: 4px;
+}
+
 .react-flow .react-flow__node.cluster-disposition {
   background: #fde2e4;
 }

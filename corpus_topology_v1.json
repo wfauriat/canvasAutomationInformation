@@ -9,6 +9,7 @@
         "label": "humility as disposition",
         "body": "Epistemic humility is the disposition the corpus argues for. Structural incentives (academic, economic) reward confident expertise; psychology resists provisional belief on identity and on display. Scientific training, oriented toward discovering 'hidden truth,' is itself a poor inducement to humility. Naming the pressure is part of holding the disposition.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "disposition"
       }
     },
@@ -118,6 +119,7 @@
         "label": "the frame problem",
         "body": "The frame problem is the question of what actually matters for a particular prediction — which Xs to include before any inference can run. To decide what does matter, one needs an idea of what could matter; the choice is upstream of the analysis it would inform.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "frame_problem"
       }
     },
@@ -138,6 +140,7 @@
         "label": "finite specification",
         "body": "Every prediction works on a finite specification of conditions. The specification is what makes inference possible and what generates uncertainty. What it omits does not appear as wider intervals; it does not appear at all.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "frame_problem"
       }
     },
@@ -148,6 +151,7 @@
         "label": "frame applies to both modes",
         "body": "The frame problem applies to both deduction and induction. Deduction's necessity is necessity-inside-the-frame; induction's pattern-fit is pattern-fit-inside-the-frame. Neither escapes the structural limit; exact prediction is precluded structurally, not contingently.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "frame_problem"
       }
     },
@@ -158,6 +162,7 @@
         "label": "frame invisible from inside",
         "body": "A reasoning system reasons from within a frame, and the frame is the result of decisions made before the reasoning starts. The system is structurally blind to its own blind spots — auditing the frame requires resources the frame does not carry.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "frame_problem"
       }
     },
@@ -168,6 +173,7 @@
         "label": "three kinds of uncertainty",
         "body": "Aleatory uncertainty is what is treated as irreducible variation within the model. Epistemic uncertainty is what better information could reduce. Ontological uncertainty is what the model did not include in the first place — the category routinely underweighted by formal practice.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "frame_problem"
       }
     },
@@ -197,6 +203,7 @@
         "label": "world responds to action, not picture",
         "body": "The world responds to the action taken, not to the picture of the world that produced it. Anticipations matter to the agent; the world does not consult them.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "decision_making"
       }
     },
@@ -314,8 +321,9 @@
       "position": { "x": 2100, "y": 0 },
       "data": {
         "label": "automation produces opacity",
-        "body": "Increased automation in information processing tends to decrease reflexivity on chosen treatments. Layered abstraction makes inner workings opaque; the practitioner becomes faster while the system becomes harder to inspect.",
+        "body": "Increased automation of information processing tends to decrease reflexivity on chosen treatments — layered abstraction makes inner workings opaque, the practitioner becomes faster while the system becomes harder to inspect. The structural problem is not new; what is new is the conditions, which raise the cost of failing to hold the disposition the corpus argues for. The disposition does not change; the intensity with which it must be held does.",
         "core_claim": true,
+        "isStructural": true,
         "main_cluster": "modern_context"
       }
     },
@@ -363,7 +371,8 @@
       "data": {
         "label": "meta no-free-lunch",
         "body": "No formal procedure decides when a frame is adequate, because any such procedure is itself a frame and inherits the same problem one level up. 'Better methodology' does not close the gap because the methodology is the choice being deferred.",
-        "core_claim": true
+        "core_claim": true,
+        "isStructural": true
       }
     },
     {
