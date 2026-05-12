@@ -68,14 +68,35 @@ body {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 38%);
+  grid-template-columns: minmax(0, 1fr) 6px minmax(320px, 38%);
 }
 
 .canvas-pane {
   position: relative;
-  border-right: 1px solid var(--border);
   background: var(--bg);
   overflow: hidden;
+}
+
+.splitter {
+  background: var(--border);
+  cursor: col-resize;
+  position: relative;
+  z-index: 5;
+  transition: background-color 120ms ease;
+}
+
+.splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  right: -3px;
+}
+
+.splitter:hover,
+.splitter.dragging {
+  background: var(--accent);
 }
 
 .toolbar {
@@ -401,3 +422,101 @@ body {
   color: var(--select);
   font-weight: 600;
 }
+
+/* === authoring features (provisional) === */
+.authoring-toolbar {
+  position: absolute;
+  bottom: 12px;
+  left: 56px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.authoring-toolbar button {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.authoring-toolbar button:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.authoring-toolbar button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.node-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.node-meta-sep {
+  opacity: 0.5;
+}
+
+.react-flow .react-flow__node.flag-core-claim {
+  border-width: 5px;
+  border-style: solid;
+}
+
+.react-flow .react-flow__node.flag-core-theory {
+  border-width: 4px;
+  border-style: dashed;
+}
+
+.react-flow .react-flow__node.flag-illustration {
+  border-width: 3px;
+  border-style: dotted;
+}
+
+.react-flow .react-flow__node.cluster-disposition {
+  background: #fde2e4;
+}
+.react-flow .react-flow__node.cluster-inference {
+  background: #dbeafe;
+}
+.react-flow .react-flow__node.cluster-frame_problem {
+  background: #fef3c7;
+}
+.react-flow .react-flow__node.cluster-decision_making {
+  background: #dcfce7;
+}
+.react-flow .react-flow__node.cluster-modern_context {
+  background: #e9d5ff;
+}
+
+:root[data-theme='dark'] .react-flow .react-flow__node.cluster-disposition {
+  background: #4a1f2c;
+}
+:root[data-theme='dark'] .react-flow .react-flow__node.cluster-inference {
+  background: #1e3a5f;
+}
+:root[data-theme='dark'] .react-flow .react-flow__node.cluster-frame_problem {
+  background: #4a3a1a;
+}
+:root[data-theme='dark'] .react-flow .react-flow__node.cluster-decision_making {
+  background: #1f4a2f;
+}
+:root[data-theme='dark'] .react-flow .react-flow__node.cluster-modern_context {
+  background: #3a234f;
+}
+/* === end authoring features === */

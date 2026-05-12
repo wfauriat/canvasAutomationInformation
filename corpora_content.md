@@ -36,6 +36,8 @@ Moving into the inference domain:
 - "Pure maths" have no "direct reach" into the real world [Positionning claim]
 - There are two modes to derive conclusions or predictions : deduction from certain rules; induction from possible conditionning [Central theoretical assertion]
 - Deduction rests on perfectly described objects or contexts (no exceptions) and necessary conclusions, inductions rests on "sufficiently similar" conditions / observations and generalised patterns or relationships
+- Deductive and inductive modes have associated guarantee regimes : for the deductive mode, the guarantee holds if and only if the supporting assumptions hold; for the inductive mode, the guarantee holds if the deployment context is sufficiently similar to the observation context and the observations in that context are sufficiently "solid" [Central theoretical assertion on prediction guarantees]
+- This is especially relevant when discussing formal guarantees on predictive uncertainty (ranges, quantiles), notably from the perspective of conformal prediction : either predictive uncertainty holds for distribution-based cases (if and only if the chosen distributional hypothesis holds), or for distribution-free cases (if the predictive uncertainty is correctly calibrated against a "similar" context). Either way the guarantee rests on a framing-level condition the method itself cannot certify
 - Probability is a support tool for judgment, not a quantity grounded in nature [Central theoretical assertion, tool definition]
 - "Exact" probability is a categorical error, only frequency (of a perfectly repeatable context, thus an inherently limited notion) can be discussed as possibly grounded [Positionning claim]
 - Eliciting a probability for a proposition Pr(X) is distributing "possible/alternative state/issues/worlds", given the best of our (backround) knowledge [Framing tool definition]
@@ -45,6 +47,7 @@ Moving into the inference domain:
 - Allowing alternatives or "possible worlds", and compute "conclusions" accordingly, is the proper way to navigate inherent uncertainty (irreducible beyond a reasonable point) [General framing of disposition toward reasoning]
 - Stripping uncertainty in long or complex reasoning chains (natural tendancy), between component models, is risky and can provoke unreasonable or overly confident predictions
 - Displaying uncertainty is often as or more interesting than displaying a point prediction
+- It is often good engineering practice (even if it resists formal specification) to consider an uncertainty buffer or to adjust the distribution of possible outcomes by allowing for what might not have been specified — a stress case, an alternative dreary scenario, an "and what if we're missing something" branch. The move cannot be derived from inside the frame, but it is one of the practical answers to the structural problem of ontological uncertainty [Central practical claim on disposition under unspecified outcomes]
 
 Moving close to the frame problem and source of uncertainty:
 

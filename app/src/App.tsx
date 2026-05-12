@@ -39,7 +39,28 @@ const EDGE_TYPES = [
 ] as const
 type EdgeType = (typeof EDGE_TYPES)[number]
 
-type CardNodeData = { label: string; body: string }
+/* === authoring features (provisional) === */
+const AUTHORING_FEATURES = true
+const CLUSTER_IDS = [
+  'disposition',
+  'inference',
+  'frame_problem',
+  'decision_making',
+  'modern_context',
+] as const
+type ClusterId = (typeof CLUSTER_IDS)[number]
+/* === end authoring features === */
+
+type CardNodeData = {
+  label: string
+  body: string
+  /* === authoring features (provisional) === */
+  core_claim?: boolean
+  core_theory?: boolean
+  illustration?: boolean
+  main_cluster?: ClusterId
+  /* === end authoring features === */
+}
 type CardEdgeData = {
   edgeType: EdgeType
   labelOffsetX?: number
@@ -224,6 +245,47 @@ function App() {
     window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light',
+  )
+  const [rightPaneWidth, setRightPaneWidth] = useState<number>(() =>
+    typeof window !== 'undefined'
+      ? Math.max(380, Math.round(window.innerWidth * 0.38))
+      : 460,
+  )
+  const [isResizing, setIsResizing] = useState(false)
+  /* === authoring features (provisional) === */
+  const [showCoreClaim, setShowCoreClaim] = useState(false)
+  const [showCoreTheory, setShowCoreTheory] = useState(false)
+  const [showIllustration, setShowIllustration] = useState(false)
+  const [showClusters, setShowClusters] = useState(false)
+  /* === end authoring features === */
+
+  const onSplitterMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+      const startX = e.clientX
+      const startWidth = rightPaneWidth
+      setIsResizing(true)
+      document.body.style.userSelect = 'none'
+      document.body.style.cursor = 'col-resize'
+      const onMove = (ev: MouseEvent) => {
+        const dx = startX - ev.clientX
+        const next = Math.min(
+          Math.max(startWidth + dx, 320),
+          window.innerWidth - 320,
+        )
+        setRightPaneWidth(next)
+      }
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+        document.body.style.userSelect = ''
+        document.body.style.cursor = ''
+        setIsResizing(false)
+      }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    },
+    [rightPaneWidth],
   )
 
   useEffect(() => {
@@ -439,6 +501,19 @@ function App() {
           if (typeof r.id !== 'string') return []
           const pos = r.position as Record<string, unknown> | undefined
           const data = r.data as Record<string, unknown> | undefined
+          /* === authoring features (provisional) === */
+          const cluster =
+            typeof data?.main_cluster === 'string' &&
+            (CLUSTER_IDS as readonly string[]).includes(data.main_cluster)
+              ? (data.main_cluster as ClusterId)
+              : undefined
+          const authoring: Partial<CardNodeData> = {
+            ...(data?.core_claim === true && { core_claim: true }),
+            ...(data?.core_theory === true && { core_theory: true }),
+            ...(data?.illustration === true && { illustration: true }),
+            ...(cluster && { main_cluster: cluster }),
+          }
+          /* === end authoring features === */
           return [
             {
               id: r.id,
@@ -449,6 +524,7 @@ function App() {
               data: {
                 label: typeof data?.label === 'string' ? data.label : '',
                 body: typeof data?.body === 'string' ? data.body : '',
+                ...authoring,
               },
             },
           ]
@@ -522,14 +598,46 @@ function App() {
     [edges, selectedNodeId],
   )
 
+  /* === authoring features (provisional) === */
+  const incomingCount = useMemo(
+    () =>
+      selectedNodeId
+        ? edges.filter((e) => e.target === selectedNodeId).length
+        : 0,
+    [edges, selectedNodeId],
+  )
+  /* === end authoring features === */
+
   const styledNodes = useMemo(
     () =>
-      nodes.map((n) => ({
-        ...n,
-        className: n.id === selectedNodeId ? 'node-focused' : '',
-        data: { ...n.data, label: n.data.label || n.id },
-      })),
-    [nodes, selectedNodeId],
+      nodes.map((n) => {
+        const classes: string[] = []
+        if (n.id === selectedNodeId) classes.push('node-focused')
+        /* === authoring features (provisional) === */
+        if (AUTHORING_FEATURES) {
+          if (showCoreClaim && n.data.core_claim) classes.push('flag-core-claim')
+          if (showCoreTheory && n.data.core_theory)
+            classes.push('flag-core-theory')
+          if (showIllustration && n.data.illustration)
+            classes.push('flag-illustration')
+          if (showClusters && n.data.main_cluster)
+            classes.push(`cluster-${n.data.main_cluster}`)
+        }
+        /* === end authoring features === */
+        return {
+          ...n,
+          className: classes.join(' '),
+          data: { ...n.data, label: n.data.label || n.id },
+        }
+      }),
+    [
+      nodes,
+      selectedNodeId,
+      showCoreClaim,
+      showCoreTheory,
+      showIllustration,
+      showClusters,
+    ],
   )
 
   const visibleEdges = useMemo(() => {
@@ -562,7 +670,12 @@ function App() {
   )
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      style={{
+        gridTemplateColumns: `minmax(0, 1fr) 6px ${rightPaneWidth}px`,
+      }}
+    >
       <div className="canvas-pane">
         <div className="toolbar">
           <button onClick={addNode}>Add node</button>
@@ -630,7 +743,47 @@ function App() {
           <Controls />
           <MiniMap pannable zoomable />
         </ReactFlow>
+        {/* === authoring toolbar (provisional) === */}
+        {AUTHORING_FEATURES && (
+          <div className="authoring-toolbar">
+            <button
+              className={showCoreClaim ? 'active' : ''}
+              onClick={() => setShowCoreClaim((v) => !v)}
+              title="Highlight core_claim nodes (thick border)"
+            >
+              core claim
+            </button>
+            <button
+              className={showCoreTheory ? 'active' : ''}
+              onClick={() => setShowCoreTheory((v) => !v)}
+              title="Highlight core_theory nodes (dashed border)"
+            >
+              core theory
+            </button>
+            <button
+              className={showIllustration ? 'active' : ''}
+              onClick={() => setShowIllustration((v) => !v)}
+              title="Highlight illustration nodes (dotted border)"
+            >
+              illustration
+            </button>
+            <button
+              className={showClusters ? 'active' : ''}
+              onClick={() => setShowClusters((v) => !v)}
+              title="Color nodes by main_cluster"
+            >
+              cluster
+            </button>
+          </div>
+        )}
+        {/* === end authoring toolbar === */}
       </div>
+      <div
+        className={`splitter${isResizing ? ' dragging' : ''}`}
+        onMouseDown={onSplitterMouseDown}
+        role="separator"
+        aria-orientation="vertical"
+      />
       <aside className="right-pane">
         <section className="content-pane">
           {selectedNode ? (
@@ -678,6 +831,17 @@ function App() {
                   Delete
                 </button>
               </div>
+              {/* === authoring features (provisional) === */}
+              {AUTHORING_FEATURES && (
+                <div className="node-meta">
+                  <span title="incoming edges">← {incomingCount} in</span>
+                  <span className="node-meta-sep">·</span>
+                  <span title="outgoing edges">
+                    → {outgoingEdges.length} out
+                  </span>
+                </div>
+              )}
+              {/* === end authoring features === */}
               {editingField === 'body' ? (
                 <textarea
                   autoFocus
